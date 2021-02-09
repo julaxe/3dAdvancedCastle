@@ -79,8 +79,12 @@ private:
     void BuildPSOs();
     void BuildFrameResources();
 
-    void CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ);
+    void CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle = 0.0f);
     void Turret(float posX, float posZ);
+    void WallHorizontal(float posX, float posZ);
+    void WallVertical(float posX, float posZ);
+    void DoorRight(float posX, float posZ);
+    void DoorLeft(float posX, float posZ);
     void BuildRenderItems();
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
  
@@ -548,12 +552,12 @@ void ShapesApp::BuildShadersAndInputLayout()
 void ShapesApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
-	GeometryGenerator::MeshData box = geoGen.CreateWedge(1.5f, 0.5f, 1.5f, 3);
-	GeometryGenerator::MeshData grid = geoGen.CreateGrid(20.0f, 30.0f, 60, 40);
+	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 4);
+	GeometryGenerator::MeshData grid = geoGen.CreateGrid(30.0f, 30.0f, 60, 40);
 	GeometryGenerator::MeshData cone = geoGen.CreateCone(1.0f, 1.0f, 20, 20);
 	GeometryGenerator::MeshData cylinder =  geoGen.CreateCylinder(1.0f, 1.0f, 1.0f, 20, 20);
     GeometryGenerator::MeshData pyramid = geoGen.CreatePyramid(1.0f, 1.0f, 1.0f, 3);
-
+    GeometryGenerator::MeshData Torus = geoGen.CreateTorus(0.5f, 1.0f, 20, 20);
 
 	//
 	// We are concatenating all the geometry into one big vertex/index buffer.  So
@@ -566,14 +570,14 @@ void ShapesApp::BuildShapeGeometry()
 	UINT coneVertexOffset = gridVertexOffset + (UINT)grid.Vertices.size();
 	UINT cylinderVertexOffset = coneVertexOffset + (UINT)cone.Vertices.size();
     UINT pyramidVertexOffset = cylinderVertexOffset + (UINT)cylinder.Vertices.size();
-
+    UINT torusVertexOffset = pyramidVertexOffset + (UINT)pyramid.Vertices.size();
 	// Cache the starting index for each object in the concatenated index buffer.
 	UINT boxIndexOffset = 0;
 	UINT gridIndexOffset = (UINT)box.Indices32.size();
 	UINT coneIndexOffset = gridIndexOffset + (UINT)grid.Indices32.size();
 	UINT cylinderIndexOffset = coneIndexOffset + (UINT)cone.Indices32.size();
     UINT pyramidIndexOffset = cylinderIndexOffset + (UINT)cylinder.Indices32.size();
-
+    UINT torusIndexOffset = pyramidIndexOffset + (UINT)pyramid.Indices32.size();
     // Define the SubmeshGeometry that cover different 
     // regions of the vertex/index buffers.
 
@@ -602,6 +606,10 @@ void ShapesApp::BuildShapeGeometry()
     pyramidSubmesh.StartIndexLocation = pyramidIndexOffset;
     pyramidSubmesh.BaseVertexLocation = pyramidVertexOffset;
 
+    SubmeshGeometry TorusSubmesh;
+    TorusSubmesh.IndexCount = (UINT)Torus.Indices32.size();
+    TorusSubmesh.StartIndexLocation = torusIndexOffset;
+    TorusSubmesh.BaseVertexLocation = torusVertexOffset;
 	//
 	// Extract the vertex elements we are interested in and pack the
 	// vertices of all the meshes into one vertex buffer.
@@ -612,7 +620,8 @@ void ShapesApp::BuildShapeGeometry()
 		grid.Vertices.size() +
 		cone.Vertices.size() +
 		cylinder.Vertices.size()+
-        pyramid.Vertices.size();
+        pyramid.Vertices.size()+
+        Torus.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
@@ -647,12 +656,19 @@ void ShapesApp::BuildShapeGeometry()
         vertices[k].Color = XMFLOAT4(DirectX::Colors::OrangeRed);
     }
 
+    for (size_t i = 0; i < Torus.Vertices.size(); ++i, ++k)
+    {
+        vertices[k].Pos = Torus.Vertices[i].Position;
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::Gold);
+    }
+
 	std::vector<std::uint16_t> indices;
 	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
 	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
 	indices.insert(indices.end(), std::begin(cone.GetIndices16()), std::end(cone.GetIndices16()));
 	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 	indices.insert(indices.end(), std::begin(pyramid.GetIndices16()), std::end(pyramid.GetIndices16()));
+    indices.insert(indices.end(), std::begin(Torus.GetIndices16()), std::end(Torus.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
     const UINT ibByteSize = (UINT)indices.size()  * sizeof(std::uint16_t);
@@ -682,6 +698,7 @@ void ShapesApp::BuildShapeGeometry()
 	geo->DrawArgs["cone"] = coneSubmesh;
 	geo->DrawArgs["cylinder"] = cylinderSubmesh;
     geo->DrawArgs["pyramid"] = pyramidSubmesh;
+    geo->DrawArgs["Torus"] = TorusSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -738,10 +755,10 @@ void ShapesApp::BuildFrameResources()
             1, (UINT)mAllRitems.size()));
     }
 }
-void ShapesApp::CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ)
+void ShapesApp::CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle)
 {
     auto temp = std::make_unique<RenderItem>();
-    XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX, sY, sZ) * XMMatrixTranslation(pX, pY, pZ));
+    XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX, sY, sZ) * XMMatrixTranslation(pX, pY, pZ)* XMMatrixRotationY(XMConvertToRadians(angle)));
     temp->ObjCBIndex = objCBIndex++;
     temp->Geo = mGeometries["shapeGeo"].get();
     temp->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -766,10 +783,45 @@ void ShapesApp::Turret(float posX, float posZ)
     CreateShape("cone", 1.0f, 3.0f, 1.0f, posX, 5.5f, posZ);
 }
 
+void ShapesApp::WallHorizontal(float posX, float posZ)
+{
+    //Wall
+    CreateShape("box", 2.0f, 2.0f, 0.5f, posX, 1.0f, posZ);
+    //Merlons
+    CreateShape("box", 1.0f, 0.5f, 0.5f, posX, 2.25f, posZ);
+}
+
+void ShapesApp::WallVertical(float posX, float posZ)
+{
+    //Wall
+    CreateShape("box", 0.5f, 2.0f, 2.0f, posX, 1.0f, posZ);
+    //Merlons
+    CreateShape("box", 0.5f, 0.5f, 1.0f, posX, 2.25f, posZ);
+}
+void ShapesApp::DoorRight(float posX, float posZ)
+{
+    //Door
+    CreateShape("box", 0.5f, 3.0f, 2.0f, posX, 1.0f, posZ);
+    //handle
+    CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 2.0f, 2.0f, posZ - 1.65f, 90.0f);
+}
+void ShapesApp::DoorLeft(float posX, float posZ)
+{
+    
+    CreateShape("box", 0.5f, 3.0f, 2.0f, posX, 1.0f, posZ);
+    
+    
+}
 void ShapesApp::BuildRenderItems()
 {
-    Turret(0.0f,0.0f);
-
+    Turret(6.0f,0.0f);
+    WallHorizontal(0.0f, 0.0f);
+    WallHorizontal(2.0f, 0.0f);
+    WallHorizontal(4.0f, 0.0f);
+    WallVertical(6.0f,2.0);
+    WallVertical(6.0f, 4.0);
+    WallVertical(6.0f, 6.0);
+    DoorRight(-2.0f, 0.0f);
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
 	gridRitem->ObjCBIndex = objCBIndex++;
