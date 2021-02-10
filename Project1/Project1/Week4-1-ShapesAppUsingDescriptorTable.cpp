@@ -615,6 +615,7 @@ void ShapesApp::BuildShapeGeometry()
 	GeometryGenerator::MeshData cylinder =  geoGen.CreateCylinder(1.0f, 1.0f, 1.0f, 20, 20);
     GeometryGenerator::MeshData pyramid = geoGen.CreatePyramid(1.0f, 1.0f, 1.0f, 3);
     GeometryGenerator::MeshData Torus = geoGen.CreateTorus(0.5f, 1.0f, 20, 20);
+    GeometryGenerator::MeshData ground = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
 
 	//
 	// We are concatenating all the geometry into one big vertex/index buffer.  So
@@ -628,6 +629,7 @@ void ShapesApp::BuildShapeGeometry()
 	UINT cylinderVertexOffset = coneVertexOffset + (UINT)cone.Vertices.size();
     UINT pyramidVertexOffset = cylinderVertexOffset + (UINT)cylinder.Vertices.size();
     UINT torusVertexOffset = pyramidVertexOffset + (UINT)pyramid.Vertices.size();
+    UINT groundVertexOffset = torusVertexOffset + (UINT)Torus.Vertices.size();
 	// Cache the starting index for each object in the concatenated index buffer.
 	UINT boxIndexOffset = 0;
 	UINT gridIndexOffset = (UINT)box.Indices32.size();
@@ -635,6 +637,7 @@ void ShapesApp::BuildShapeGeometry()
 	UINT cylinderIndexOffset = coneIndexOffset + (UINT)cone.Indices32.size();
     UINT pyramidIndexOffset = cylinderIndexOffset + (UINT)cylinder.Indices32.size();
     UINT torusIndexOffset = pyramidIndexOffset + (UINT)pyramid.Indices32.size();
+    UINT groundIndexOffset = torusIndexOffset + (UINT)Torus.Indices32.size();
     // Define the SubmeshGeometry that cover different 
     // regions of the vertex/index buffers.
 
@@ -667,6 +670,11 @@ void ShapesApp::BuildShapeGeometry()
     TorusSubmesh.IndexCount = (UINT)Torus.Indices32.size();
     TorusSubmesh.StartIndexLocation = torusIndexOffset;
     TorusSubmesh.BaseVertexLocation = torusVertexOffset;
+
+    SubmeshGeometry groundSubmesh;
+    groundSubmesh.IndexCount = (UINT)ground.Indices32.size();
+    groundSubmesh.StartIndexLocation = groundIndexOffset;
+    groundSubmesh.BaseVertexLocation = groundVertexOffset;
 	//
 	// Extract the vertex elements we are interested in and pack the
 	// vertices of all the meshes into one vertex buffer.
@@ -678,7 +686,8 @@ void ShapesApp::BuildShapeGeometry()
 		cone.Vertices.size() +
 		cylinder.Vertices.size()+
         pyramid.Vertices.size()+
-        Torus.Vertices.size();
+        Torus.Vertices.size()+
+        ground.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
@@ -686,7 +695,7 @@ void ShapesApp::BuildShapeGeometry()
 	for(size_t i = 0; i < box.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos = box.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::ForestGreen);
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGray);
 	}
 
 	for(size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
@@ -719,6 +728,12 @@ void ShapesApp::BuildShapeGeometry()
         vertices[k].Color = XMFLOAT4(DirectX::Colors::Gold);
     }
 
+    for (size_t i = 0; i < ground.Vertices.size(); ++i, ++k)
+    {
+        vertices[k].Pos = ground.Vertices[i].Position;
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::ForestGreen);
+    }
+
 	std::vector<std::uint16_t> indices;
 	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
 	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
@@ -726,6 +741,7 @@ void ShapesApp::BuildShapeGeometry()
 	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 	indices.insert(indices.end(), std::begin(pyramid.GetIndices16()), std::end(pyramid.GetIndices16()));
     indices.insert(indices.end(), std::begin(Torus.GetIndices16()), std::end(Torus.GetIndices16()));
+    indices.insert(indices.end(), std::begin(ground.GetIndices16()), std::end(ground.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
     const UINT ibByteSize = (UINT)indices.size()  * sizeof(std::uint16_t);
@@ -756,6 +772,7 @@ void ShapesApp::BuildShapeGeometry()
 	geo->DrawArgs["cylinder"] = cylinderSubmesh;
     geo->DrawArgs["pyramid"] = pyramidSubmesh;
     geo->DrawArgs["Torus"] = TorusSubmesh;
+    geo->DrawArgs["ground"] = groundSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -874,7 +891,7 @@ void ShapesApp::BuildRenderItems()
     Turret(0.0f,0.0f);
 
     //ground
-    CreateShape("box", 30.0f, 1.0f, 30.0f, 0.0f, -0.5f, 0.0f);
+    CreateShape("ground", 30.0f, 1.0f, 30.0f, 0.0f, -0.5f, 0.0f);
 
     for (int x = 0; x < numberOfTiles; x++)
     {
@@ -885,6 +902,13 @@ void ShapesApp::BuildRenderItems()
             case 'T':
                 Turret(tileMap[x][y].posX, tileMap[x][y].posY);
                 break;
+            case 'H':
+                WallHorizontal(tileMap[x][y].posX, tileMap[x][y].posY);
+                break;
+            case 'V':
+                WallVertical(tileMap[x][y].posX, tileMap[x][y].posY);
+                break;
+
             default:
                 break;
             }
