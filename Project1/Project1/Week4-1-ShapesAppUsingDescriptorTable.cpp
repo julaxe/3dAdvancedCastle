@@ -801,16 +801,16 @@ void ShapesApp::WallVertical(float posX, float posZ)
 void ShapesApp::DoorRight(float posX, float posZ)
 {
     //Door
-    CreateShape("box", 0.5f, 3.0f, 2.0f, posX, 1.0f, posZ);
+    CreateShape("box", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ);
     //handle
-    CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 2.0f, 2.0f, posZ - 1.65f, 90.0f);
+    CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX - 0.5 , 1.5f, posZ - 0.2 );
 }
 void ShapesApp::DoorLeft(float posX, float posZ)
 {
-    
-    CreateShape("box", 0.5f, 3.0f, 2.0f, posX, 1.0f, posZ);
-    
-    
+    //Door
+    CreateShape("box", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ);
+    //handle
+    CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 0.5, 1.5f, posZ - 0.2);
 }
 void ShapesApp::BuildRenderItems()
 {
@@ -822,6 +822,7 @@ void ShapesApp::BuildRenderItems()
     WallVertical(6.0f, 4.0);
     WallVertical(6.0f, 6.0);
     DoorRight(-2.0f, 0.0f);
+    DoorLeft(-4.0f, 0.0f);
     auto gridRitem = std::make_unique<RenderItem>();
     gridRitem->World = MathHelper::Identity4x4();
 	gridRitem->ObjCBIndex = objCBIndex++;
