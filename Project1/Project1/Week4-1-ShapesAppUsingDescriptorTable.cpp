@@ -9,6 +9,9 @@
 #include "../../Common/UploadBuffer.h"
 #include "../../Common/GeometryGenerator.h"
 #include "FrameResource.h"
+#include <iostream>
+#include <fstream>
+#include <string>
 
 using Microsoft::WRL::ComPtr;
 using namespace DirectX;
@@ -47,6 +50,26 @@ struct RenderItem
     int BaseVertexLocation = 0;
 };
 
+struct Elements
+{
+    Elements()
+    {
+        this->id = 'n';
+        this->posX = 0.0f;
+        this->posY = 0.0f;
+    }
+    Elements(char id, float posX, float posY)
+    {
+        this->id = id;
+        this->posX = posX;
+        this->posY = posY;
+    }
+
+    char id;
+    float posX;
+    float posY;
+};
+
 class ShapesApp : public D3DApp
 {
 public:
@@ -58,6 +81,7 @@ public:
     virtual bool Initialize()override;
 
 private:
+    void CreateTileMap();
     virtual void OnResize()override;
     virtual void Update(const GameTimer& gt)override;
     virtual void Draw(const GameTimer& gt)override;
@@ -108,6 +132,10 @@ private:
 
 	// List of all the render items.
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
+
+    //tileMap
+    int const numberOfTiles = 24;
+    Elements tileMap[24][24];
 
 	// Render items divided by PSO.
 	std::vector<RenderItem*> mOpaqueRitems;
@@ -171,6 +199,8 @@ bool ShapesApp::Initialize()
     // Reset the command list to prep for initialization commands.
     ThrowIfFailed(mCommandList->Reset(mDirectCmdListAlloc.Get(), nullptr));
 
+    //read the text file that contains the tilemap and store it in a private variable
+    CreateTileMap();
     BuildRootSignature();
     BuildShadersAndInputLayout();
     BuildShapeGeometry();
@@ -179,6 +209,8 @@ bool ShapesApp::Initialize()
     BuildDescriptorHeaps();
     BuildConstantBufferViews();
     BuildPSOs();
+    
+    
 
     // Execute the initialization commands.
     ThrowIfFailed(mCommandList->Close());
@@ -191,6 +223,31 @@ bool ShapesApp::Initialize()
     return true;
 }
  
+void ShapesApp::CreateTileMap()
+{
+    std::fstream fin("tileMap.txt", std::fstream::in);
+    int x = 0;
+    int y = 0;
+    float posX = (float)numberOfTiles * -0.5f;
+    float posY = (float)numberOfTiles * 0.5f;
+    char ch;
+    while (fin >> std::noskipws >> ch)
+    {
+        if (ch == '\n') // go to the next line so next row
+        {
+            x = 0;
+            posX = (float)numberOfTiles * -0.5f;
+
+            y++;
+            posY -= 1.0f;
+            continue;
+        }
+        if (x < numberOfTiles && y < numberOfTiles)
+            tileMap[x][y] = Elements(ch, posX, posY);
+        x++;
+        posX += 1.0f; //go to the next column 
+    }
+}
 void ShapesApp::OnResize()
 {
     D3DApp::OnResize();
@@ -552,12 +609,13 @@ void ShapesApp::BuildShadersAndInputLayout()
 void ShapesApp::BuildShapeGeometry()
 {
     GeometryGenerator geoGen;
-	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 4);
+	GeometryGenerator::MeshData box = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
 	GeometryGenerator::MeshData grid = geoGen.CreateGrid(30.0f, 30.0f, 60, 40);
 	GeometryGenerator::MeshData cone = geoGen.CreateCone(1.0f, 1.0f, 20, 20);
 	GeometryGenerator::MeshData cylinder =  geoGen.CreateCylinder(1.0f, 1.0f, 1.0f, 20, 20);
     GeometryGenerator::MeshData pyramid = geoGen.CreatePyramid(1.0f, 1.0f, 1.0f, 3);
     GeometryGenerator::MeshData Torus = geoGen.CreateTorus(0.5f, 1.0f, 20, 20);
+    GeometryGenerator::MeshData ground = geoGen.CreateBox(1.0f, 1.0f, 1.0f, 3);
 
 	//
 	// We are concatenating all the geometry into one big vertex/index buffer.  So
@@ -571,6 +629,7 @@ void ShapesApp::BuildShapeGeometry()
 	UINT cylinderVertexOffset = coneVertexOffset + (UINT)cone.Vertices.size();
     UINT pyramidVertexOffset = cylinderVertexOffset + (UINT)cylinder.Vertices.size();
     UINT torusVertexOffset = pyramidVertexOffset + (UINT)pyramid.Vertices.size();
+    UINT groundVertexOffset = torusVertexOffset + (UINT)Torus.Vertices.size();
 	// Cache the starting index for each object in the concatenated index buffer.
 	UINT boxIndexOffset = 0;
 	UINT gridIndexOffset = (UINT)box.Indices32.size();
@@ -578,6 +637,7 @@ void ShapesApp::BuildShapeGeometry()
 	UINT cylinderIndexOffset = coneIndexOffset + (UINT)cone.Indices32.size();
     UINT pyramidIndexOffset = cylinderIndexOffset + (UINT)cylinder.Indices32.size();
     UINT torusIndexOffset = pyramidIndexOffset + (UINT)pyramid.Indices32.size();
+    UINT groundIndexOffset = torusIndexOffset + (UINT)Torus.Indices32.size();
     // Define the SubmeshGeometry that cover different 
     // regions of the vertex/index buffers.
 
@@ -610,6 +670,11 @@ void ShapesApp::BuildShapeGeometry()
     TorusSubmesh.IndexCount = (UINT)Torus.Indices32.size();
     TorusSubmesh.StartIndexLocation = torusIndexOffset;
     TorusSubmesh.BaseVertexLocation = torusVertexOffset;
+
+    SubmeshGeometry groundSubmesh;
+    groundSubmesh.IndexCount = (UINT)ground.Indices32.size();
+    groundSubmesh.StartIndexLocation = groundIndexOffset;
+    groundSubmesh.BaseVertexLocation = groundVertexOffset;
 	//
 	// Extract the vertex elements we are interested in and pack the
 	// vertices of all the meshes into one vertex buffer.
@@ -621,7 +686,8 @@ void ShapesApp::BuildShapeGeometry()
 		cone.Vertices.size() +
 		cylinder.Vertices.size()+
         pyramid.Vertices.size()+
-        Torus.Vertices.size();
+        Torus.Vertices.size()+
+        ground.Vertices.size();
 
 	std::vector<Vertex> vertices(totalVertexCount);
 
@@ -629,7 +695,7 @@ void ShapesApp::BuildShapeGeometry()
 	for(size_t i = 0; i < box.Vertices.size(); ++i, ++k)
 	{
 		vertices[k].Pos = box.Vertices[i].Position;
-        vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGreen);
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::DarkGray);
 	}
 
 	for(size_t i = 0; i < grid.Vertices.size(); ++i, ++k)
@@ -662,6 +728,12 @@ void ShapesApp::BuildShapeGeometry()
         vertices[k].Color = XMFLOAT4(DirectX::Colors::Gold);
     }
 
+    for (size_t i = 0; i < ground.Vertices.size(); ++i, ++k)
+    {
+        vertices[k].Pos = ground.Vertices[i].Position;
+        vertices[k].Color = XMFLOAT4(DirectX::Colors::ForestGreen);
+    }
+
 	std::vector<std::uint16_t> indices;
 	indices.insert(indices.end(), std::begin(box.GetIndices16()), std::end(box.GetIndices16()));
 	indices.insert(indices.end(), std::begin(grid.GetIndices16()), std::end(grid.GetIndices16()));
@@ -669,6 +741,7 @@ void ShapesApp::BuildShapeGeometry()
 	indices.insert(indices.end(), std::begin(cylinder.GetIndices16()), std::end(cylinder.GetIndices16()));
 	indices.insert(indices.end(), std::begin(pyramid.GetIndices16()), std::end(pyramid.GetIndices16()));
     indices.insert(indices.end(), std::begin(Torus.GetIndices16()), std::end(Torus.GetIndices16()));
+    indices.insert(indices.end(), std::begin(ground.GetIndices16()), std::end(ground.GetIndices16()));
 
     const UINT vbByteSize = (UINT)vertices.size() * sizeof(Vertex);
     const UINT ibByteSize = (UINT)indices.size()  * sizeof(std::uint16_t);
@@ -699,6 +772,7 @@ void ShapesApp::BuildShapeGeometry()
 	geo->DrawArgs["cylinder"] = cylinderSubmesh;
     geo->DrawArgs["pyramid"] = pyramidSubmesh;
     geo->DrawArgs["Torus"] = TorusSubmesh;
+    geo->DrawArgs["ground"] = groundSubmesh;
 
 	mGeometries[geo->Name] = std::move(geo);
 }
@@ -814,24 +888,32 @@ void ShapesApp::DoorLeft(float posX, float posZ)
 }
 void ShapesApp::BuildRenderItems()
 {
-    Turret(6.0f,0.0f);
-    WallHorizontal(0.0f, 0.0f);
-    WallHorizontal(2.0f, 0.0f);
-    WallHorizontal(4.0f, 0.0f);
-    WallVertical(6.0f,2.0);
-    WallVertical(6.0f, 4.0);
-    WallVertical(6.0f, 6.0);
-    DoorRight(-2.0f, 0.0f);
-    DoorLeft(-4.0f, 0.0f);
-    auto gridRitem = std::make_unique<RenderItem>();
-    gridRitem->World = MathHelper::Identity4x4();
-	gridRitem->ObjCBIndex = objCBIndex++;
-	gridRitem->Geo = mGeometries["shapeGeo"].get();
-	gridRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-    gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
-	mAllRitems.push_back(std::move(gridRitem));
+    Turret(0.0f,0.0f);
+
+    //ground
+    CreateShape("ground", 30.0f, 1.0f, 30.0f, 0.0f, -0.5f, 0.0f);
+
+    for (int x = 0; x < numberOfTiles; x++)
+    {
+        for (int y = 0; y < numberOfTiles; y++)
+        {
+            switch (tileMap[x][y].id)
+            {
+            case 'T':
+                Turret(tileMap[x][y].posX, tileMap[x][y].posY);
+                break;
+            case 'H':
+                WallHorizontal(tileMap[x][y].posX, tileMap[x][y].posY);
+                break;
+            case 'V':
+                WallVertical(tileMap[x][y].posX, tileMap[x][y].posY);
+                break;
+
+            default:
+                break;
+            }
+        }
+    }
 
 
 	// All the render items are opaque.
