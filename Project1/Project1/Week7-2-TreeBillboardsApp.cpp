@@ -123,7 +123,7 @@ private:
     void BuildPSOs();
     void BuildFrameResources();
 
-	void CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle = 0.0f);
+	void CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle = 0.0f, std::string matereal = "brick" );
 	void Turret(float posX, float posZ);
 	void SuperTurret(float posX, float posZ);
 	void WallHorizontal(float posX, float posZ);
@@ -560,16 +560,16 @@ void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
 	//ambient light
 	mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 	mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[0].Strength = { 0.15f, 0.15f, 1.0f };
+	mMainPassCB.Lights[0].Strength = { 0.15f, 0.15f, 0.50f };
 	mMainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[1].Strength = { 0.15f, 0.15f, 1.0f };
+	mMainPassCB.Lights[1].Strength = { 0.15f, 0.15f, 0.50f };
 
 	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 1.0f };
+	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.50f };
 
 	//point light
-	mMainPassCB.Lights[3].Position = { -5.0f, 5.707f, -0.707f };
-	mMainPassCB.Lights[3].Strength = { 0.15f, 10.15f, 0.15f };
+	mMainPassCB.Lights[3].Position = { -0.0f, 0.707f, -0.707f };
+	mMainPassCB.Lights[3].Strength = { 10.15f, 10.15f, 0.15f };
 
 
 
@@ -687,10 +687,43 @@ void TreeBillboardsApp::LoadTextures()
 	//new
 	auto brickTex = std::make_unique<Texture>();
 	brickTex->Name = "brickTex";
-	brickTex->Filename = L"../../Textures/bricks.dds";
+	brickTex->Filename = L"../../Textures/roof.dds";
 	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
 		mCommandList.Get(), brickTex->Filename.c_str(),
 		brickTex->Resource, brickTex->UploadHeap));
+
+	//Concrete
+	auto concreteTex = std::make_unique<Texture>();
+	concreteTex->Name = "concreteTex";
+	concreteTex->Filename = L"../../Textures/concrete.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), concreteTex->Filename.c_str(),
+		concreteTex->Resource, concreteTex->UploadHeap));
+
+	//wood
+	auto woodTex = std::make_unique<Texture>();
+	woodTex->Name = "woodTex";
+	woodTex->Filename = L"../../Textures/wood.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), woodTex->Filename.c_str(),
+		woodTex->Resource, woodTex->UploadHeap));
+
+	//gold
+	auto goldTex = std::make_unique<Texture>();
+	goldTex->Name = "goldTex";
+	goldTex->Filename = L"../../Textures/gold.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), goldTex->Filename.c_str(),
+		goldTex->Resource, goldTex->UploadHeap));
+
+	//metal patern
+	auto metalTex = std::make_unique<Texture>();
+	metalTex->Name = "metalTex";
+	metalTex->Filename = L"../../Textures/teste.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), metalTex->Filename.c_str(),
+		metalTex->Resource, metalTex->UploadHeap));
+
 
 	auto treeArrayTex = std::make_unique<Texture>();
 	treeArrayTex->Name = "treeArrayTex";
@@ -704,6 +737,10 @@ void TreeBillboardsApp::LoadTextures()
 	mTextures[waterTex->Name] = std::move(waterTex);
 	mTextures[fenceTex->Name] = std::move(fenceTex);
 	mTextures[brickTex->Name] = std::move(brickTex);
+	mTextures[concreteTex->Name] = std::move(concreteTex);
+	mTextures[woodTex->Name] = std::move(woodTex);
+	mTextures[goldTex->Name] = std::move(goldTex);
+	mTextures[metalTex->Name] = std::move(metalTex);
 
 	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
 
@@ -756,7 +793,7 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 5; //change this number depending of how many descriptors you have
+	srvHeapDesc.NumDescriptors = 9; //change this number depending of how many descriptors you have
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -770,6 +807,10 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	auto waterTex = mTextures["waterTex"]->Resource;
 	auto fenceTex = mTextures["fenceTex"]->Resource;
 	auto brickTex = mTextures["brickTex"]->Resource;
+	auto concreteTex = mTextures["concreteTex"]->Resource;
+	auto woodTex = mTextures["woodTex"]->Resource;
+	auto goldTex = mTextures["goldTex"]->Resource;
+	auto metalTex = mTextures["metalTex"]->Resource;
 	auto treeArrayTex = mTextures["treeArrayTex"]->Resource;
 
 
@@ -803,6 +844,34 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	srvDesc.Format = brickTex->GetDesc().Format;
 	srvDesc.Texture2D.MipLevels = brickTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(brickTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = concreteTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = concreteTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(concreteTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = woodTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = woodTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(woodTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = goldTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = goldTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(goldTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = metalTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = metalTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(metalTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
 	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
@@ -1219,14 +1288,14 @@ void TreeBillboardsApp::BuildFrameResources()
     }
 }
 
-void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle)
+void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle, std::string matereal)
 {
 	auto temp = std::make_unique<RenderItem>();
 	float globalScale = 2.0f;
 	//float globalYOffset = 10.f;
 	XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX * globalScale, sY* globalScale, sZ* globalScale) * XMMatrixTranslation(pX* globalScale, pY* globalScale, pZ* globalScale) * XMMatrixRotationY(XMConvertToRadians(angle)));
 	temp->ObjCBIndex = objCBIndex++;
-	temp->Mat = mMaterials["brick"].get();
+	temp->Mat = mMaterials[matereal].get();
 	std::string s = shapeType;
 	temp->Geo = mGeometries[s + "Geo"].get();
 	temp->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1240,62 +1309,62 @@ void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, f
 void TreeBillboardsApp::Turret(float posX, float posZ)
 {
 	//BottomCylinder
-	CreateShape("cylinder", 1.0f, 3.0f, 1.0f, posX, 1.0f, posZ);
+	CreateShape("cylinder", 1.0f, 3.0f, 1.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 
 	//topCilyinder
-	CreateShape("cylinder", 1.2f, 1.5f, 1.2f, posX, 3.25f, posZ);
+	CreateShape("cylinder", 1.2f, 1.5f, 1.2f, posX, 3.25f, posZ, 0.0f, "metal");
 
 	//bottomPyramid
 	CreateShape("pyramid", 3.0f, 1.5f, 3.0f, posX, 4.75f, posZ);
 
 	//topCone
-	CreateShape("cone", 1.0f, 3.0f, 1.0f, posX, 5.5f, posZ);
+	CreateShape("cone", 1.25f, 3.0f, 1.25f, posX, 5.5f, posZ);
 }
 
 void TreeBillboardsApp::SuperTurret(float posX, float posZ)
 {
 	float scale = 2;
 	//BottomCylinder
-	CreateShape("cylinder", 1.0f * scale, 3.0f * scale, 1.0f * scale, posX, 1.0f * scale, posZ);
+	CreateShape("cylinder", 1.0f * scale, 3.0f * scale, 1.0f * scale, posX, 1.0f * scale, posZ, 0.0f, "concrete");
 
 	//topCilyinder
-	CreateShape("cylinder", 1.2f * scale, 1.5f * scale, 1.2f * scale, posX, 3.25f * scale, posZ);
+	CreateShape("cylinder", 1.2f * scale, 1.5f * scale, 1.2f * scale, posX, 3.25f * scale, posZ, 0.0f, "metal");
 
 	//bottomPyramid
 	CreateShape("pyramid", 3.0f * scale, 1.5f * scale, 3.0f * scale, posX, 4.75f * scale, posZ);
 
 	//topCone
-	CreateShape("cone", 1.0f * scale, 3.0f * scale, 1.0f * scale, posX, 5.5f * scale, posZ);
+	CreateShape("cone", 1.25f * scale, 3.0f * scale, 1.25f * scale, posX, 5.5f * scale, posZ);
 }
 
 void TreeBillboardsApp::WallHorizontal(float posX, float posZ)
 {
 	//Wall
-	CreateShape("box", 2.0f, 2.0f, 0.5f, posX, 1.0f, posZ);
+	CreateShape("box", 2.0f, 2.0f, 0.5f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
-	CreateShape("box", 1.0f, 0.5f, 0.5f, posX, 2.25f, posZ);
+	CreateShape("box", 1.0f, 0.5f, 0.5f, posX, 2.25f, posZ, 0.0f, "metal");
 }
 
 void TreeBillboardsApp::WallVertical(float posX, float posZ)
 {
 	//Wall
-	CreateShape("box", 0.5f, 2.0f, 2.0f, posX, 1.0f, posZ);
+	CreateShape("box", 0.5f, 2.0f, 2.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
-	CreateShape("box", 0.5f, 0.5f, 1.0f, posX, 2.25f, posZ);
+	CreateShape("box", 0.5f, 0.5f, 1.0f, posX, 2.25f, posZ, 0.0f, "metal");
 }
 void TreeBillboardsApp::DoorRight(float posX, float posZ)
 {
 	//Door
-	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ);
+	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
-	CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX - 0.5, 1.5f, posZ - 0.2);
+	CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX - 0.5, 1.5f, posZ - 0.2 , 0.0f, "gold");
 }
 void TreeBillboardsApp::DoorLeft(float posX, float posZ)
 {
 	//Door
-	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ);
+	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
-	CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 0.5, 1.5f, posZ - 0.2);
+	CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 0.5, 1.5f, posZ - 0.2, 0.0f, "gold");
 }
 void TreeBillboardsApp::BuildMaterials()
 {
@@ -1333,10 +1402,42 @@ void TreeBillboardsApp::BuildMaterials()
 	brick->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	brick->Roughness = 0.125f;
 
+	auto concrete = std::make_unique<Material>();
+	concrete->Name = "concrete";
+	concrete->MatCBIndex = 4;
+	concrete->DiffuseSrvHeapIndex = 4;
+	concrete->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	concrete->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	concrete->Roughness = 0.125f;
+
+	auto wood = std::make_unique<Material>();
+	wood->Name = "wood";
+	wood->MatCBIndex = 5;
+	wood->DiffuseSrvHeapIndex = 5;
+	wood->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	wood->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	wood->Roughness = 0.125f;
+
+	auto gold = std::make_unique<Material>();
+	gold->Name = "gold";
+	gold->MatCBIndex = 6;
+	gold->DiffuseSrvHeapIndex = 6;
+	gold->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	gold->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	gold->Roughness = 0.125f;
+
+	auto metal = std::make_unique<Material>();
+	metal->Name = "metal";
+	metal->MatCBIndex = 7;
+	metal->DiffuseSrvHeapIndex = 7;
+	metal->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	metal->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	metal->Roughness = 0.125f;
+
 	auto treeSprites = std::make_unique<Material>();
 	treeSprites->Name = "treeSprites";
-	treeSprites->MatCBIndex = 4;
-	treeSprites->DiffuseSrvHeapIndex = 4;
+	treeSprites->MatCBIndex = 8;
+	treeSprites->DiffuseSrvHeapIndex = 8;
 	treeSprites->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	treeSprites->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	treeSprites->Roughness = 0.125f;
@@ -1346,20 +1447,26 @@ void TreeBillboardsApp::BuildMaterials()
 	mMaterials["water"] = std::move(water);
 	mMaterials["wirefence"] = std::move(wirefence);
 	mMaterials["brick"] = std::move(brick);
+	mMaterials["concrete"] = std::move(concrete);
+	mMaterials["wood"] = std::move(wood);
+	mMaterials["gold"] = std::move(gold);
+	mMaterials["metal"] = std::move(metal);
+
 	mMaterials["treeSprites"] = std::move(treeSprites);
 }
 
 void TreeBillboardsApp::BuildRenderItems()
 {
-	//SuperTurret(0.0f, 0.0f);
+	SuperTurret(0.0f, 0.0f);
 
+	std::string s = "grass";
 	//ground
-	CreateShape("ground", 55.0f, 1.0f, 44.0f, 0.0f, -0.5f, 13.0f);
+	CreateShape("ground", 55.0f, 1.0f, 44.0f, 0.0f, -0.5f, 13.0f, 0.0, s);
 	//ground2
-	CreateShape("ground", 30.0f, 1.0f, 30.0f, 0.0f, -1.5f, 0.0f);
+	CreateShape("ground", 30.0f, 1.0f, 30.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
 
 	//Ramp
-	CreateShape("ramp", 5.0f, 1.0f, 5.0f, -11.5f, -0.5f, 0.5f, -90.0f);
+	CreateShape("ramp", 5.0f, 1.0f, 5.0f, -11.5f, -0.5f, 0.5f, -90.0f, s);
 
 	for (int x = 0; x < numberOfTiles; x++)
 	{
