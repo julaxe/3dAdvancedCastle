@@ -556,13 +556,22 @@ void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
 	mMainPassCB.FarZ = 1000.0f;
 	mMainPassCB.TotalTime = gt.TotalTime();
 	mMainPassCB.DeltaTime = gt.DeltaTime();
+
+	//ambient light
 	mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
 	mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[0].Strength = { 0.6f, 0.6f, 0.6f };
+	mMainPassCB.Lights[0].Strength = { 0.15f, 0.15f, 1.0f };
 	mMainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
-	mMainPassCB.Lights[1].Strength = { 0.3f, 0.3f, 0.3f };
+	mMainPassCB.Lights[1].Strength = { 0.15f, 0.15f, 1.0f };
+
 	mMainPassCB.Lights[2].Direction = { 0.0f, -0.707f, -0.707f };
-	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 0.15f };
+	mMainPassCB.Lights[2].Strength = { 0.15f, 0.15f, 1.0f };
+
+	//point light
+	mMainPassCB.Lights[3].Position = { -5.0f, 5.707f, -0.707f };
+	mMainPassCB.Lights[3].Strength = { 0.15f, 10.15f, 0.15f };
+
+
 
 	auto currPassCB = mCurrFrameResource->PassCB.get();
 	currPassCB->CopyData(0, mMainPassCB);
@@ -675,6 +684,14 @@ void TreeBillboardsApp::LoadTextures()
 		mCommandList.Get(), fenceTex->Filename.c_str(),
 		fenceTex->Resource, fenceTex->UploadHeap));
 
+	//new
+	auto brickTex = std::make_unique<Texture>();
+	brickTex->Name = "brickTex";
+	brickTex->Filename = L"../../Textures/bricks.dds";
+	ThrowIfFailed(DirectX::CreateDDSTextureFromFile12(md3dDevice.Get(),
+		mCommandList.Get(), brickTex->Filename.c_str(),
+		brickTex->Resource, brickTex->UploadHeap));
+
 	auto treeArrayTex = std::make_unique<Texture>();
 	treeArrayTex->Name = "treeArrayTex";
 	treeArrayTex->Filename = L"../../Textures/tree.dds";
@@ -682,10 +699,15 @@ void TreeBillboardsApp::LoadTextures()
 		mCommandList.Get(), treeArrayTex->Filename.c_str(),
 		treeArrayTex->Resource, treeArrayTex->UploadHeap));
 
+
 	mTextures[grassTex->Name] = std::move(grassTex);
 	mTextures[waterTex->Name] = std::move(waterTex);
 	mTextures[fenceTex->Name] = std::move(fenceTex);
+	mTextures[brickTex->Name] = std::move(brickTex);
+
 	mTextures[treeArrayTex->Name] = std::move(treeArrayTex);
+
+	//new
 }
 
 void TreeBillboardsApp::BuildRootSignature()
@@ -734,7 +756,7 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	// Create the SRV heap.
 	//
 	D3D12_DESCRIPTOR_HEAP_DESC srvHeapDesc = {};
-	srvHeapDesc.NumDescriptors = 4;
+	srvHeapDesc.NumDescriptors = 5; //change this number depending of how many descriptors you have
 	srvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV;
 	srvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_SHADER_VISIBLE;
 	ThrowIfFailed(md3dDevice->CreateDescriptorHeap(&srvHeapDesc, IID_PPV_ARGS(&mSrvDescriptorHeap)));
@@ -747,27 +769,40 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	auto grassTex = mTextures["grassTex"]->Resource;
 	auto waterTex = mTextures["waterTex"]->Resource;
 	auto fenceTex = mTextures["fenceTex"]->Resource;
+	auto brickTex = mTextures["brickTex"]->Resource;
 	auto treeArrayTex = mTextures["treeArrayTex"]->Resource;
+
 
 	D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
 	srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
 	srvDesc.Format = grassTex->GetDesc().Format;
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2D;
 	srvDesc.Texture2D.MostDetailedMip = 0;
-	srvDesc.Texture2D.MipLevels = -1;
+
+	
+	srvDesc.Texture2D.MipLevels = grassTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(grassTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
 	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
 
 	srvDesc.Format = waterTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = waterTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(waterTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
 	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
 
 	srvDesc.Format = fenceTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = fenceTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(fenceTex.Get(), &srvDesc, hDescriptor);
+
+	// next descriptor
+	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
+
+	srvDesc.Format = brickTex->GetDesc().Format;
+	srvDesc.Texture2D.MipLevels = brickTex->GetDesc().MipLevels;
+	md3dDevice->CreateShaderResourceView(brickTex.Get(), &srvDesc, hDescriptor);
 
 	// next descriptor
 	hDescriptor.Offset(1, mCbvSrvDescriptorSize);
@@ -776,10 +811,12 @@ void TreeBillboardsApp::BuildDescriptorHeaps()
 	srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
 	srvDesc.Format = treeArrayTex->GetDesc().Format;
 	srvDesc.Texture2DArray.MostDetailedMip = 0;
-	srvDesc.Texture2DArray.MipLevels = -1;
 	srvDesc.Texture2DArray.FirstArraySlice = 0;
 	srvDesc.Texture2DArray.ArraySize = treeArrayTex->GetDesc().DepthOrArraySize;
+
+	srvDesc.Texture2D.MipLevels = treeArrayTex->GetDesc().MipLevels;
 	md3dDevice->CreateShaderResourceView(treeArrayTex.Get(), &srvDesc, hDescriptor);
+
 }
 
 void TreeBillboardsApp::BuildShadersAndInputLayouts()
@@ -1189,7 +1226,7 @@ void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, f
 	//float globalYOffset = 10.f;
 	XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX * globalScale, sY* globalScale, sZ* globalScale) * XMMatrixTranslation(pX* globalScale, pY* globalScale, pZ* globalScale) * XMMatrixRotationY(XMConvertToRadians(angle)));
 	temp->ObjCBIndex = objCBIndex++;
-	temp->Mat = mMaterials["grass"].get();
+	temp->Mat = mMaterials["brick"].get();
 	std::string s = shapeType;
 	temp->Geo = mGeometries[s + "Geo"].get();
 	temp->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
@@ -1288,23 +1325,33 @@ void TreeBillboardsApp::BuildMaterials()
 	wirefence->FresnelR0 = XMFLOAT3(0.02f, 0.02f, 0.02f);
 	wirefence->Roughness = 0.25f;
 
+	auto brick = std::make_unique<Material>();
+	brick->Name = "brick";
+	brick->MatCBIndex = 3;
+	brick->DiffuseSrvHeapIndex = 3;
+	brick->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
+	brick->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
+	brick->Roughness = 0.125f;
+
 	auto treeSprites = std::make_unique<Material>();
 	treeSprites->Name = "treeSprites";
-	treeSprites->MatCBIndex = 3;
-	treeSprites->DiffuseSrvHeapIndex = 3;
+	treeSprites->MatCBIndex = 4;
+	treeSprites->DiffuseSrvHeapIndex = 4;
 	treeSprites->DiffuseAlbedo = XMFLOAT4(1.0f, 1.0f, 1.0f, 1.0f);
 	treeSprites->FresnelR0 = XMFLOAT3(0.01f, 0.01f, 0.01f);
 	treeSprites->Roughness = 0.125f;
 
+
 	mMaterials["grass"] = std::move(grass);
 	mMaterials["water"] = std::move(water);
 	mMaterials["wirefence"] = std::move(wirefence);
+	mMaterials["brick"] = std::move(brick);
 	mMaterials["treeSprites"] = std::move(treeSprites);
 }
 
 void TreeBillboardsApp::BuildRenderItems()
 {
-	SuperTurret(0.0f, 0.0f);
+	//SuperTurret(0.0f, 0.0f);
 
 	//ground
 	CreateShape("ground", 55.0f, 1.0f, 44.0f, 0.0f, -0.5f, 13.0f);
