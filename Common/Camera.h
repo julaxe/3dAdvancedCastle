@@ -12,7 +12,21 @@
 #define CAMERA_H
 
 #include "d3dUtil.h"
-
+struct Rect
+{
+	Rect() = default;
+	Rect(float x, float y, float wx, float hz)
+	{
+		posX = x;
+		posY = y;
+		this->wx = wx;
+		this->hz = hz;
+	}
+	float posX;
+	float posY;
+	float wx;
+	float hz;
+};
 class Camera
 {
 public:
@@ -74,6 +88,8 @@ public:
 	// After modifying camera position/orientation, call to rebuild the view matrix.
 	void UpdateViewMatrix();
 
+	Rect getRect();
+
 private:
 
 	// Camera coordinate system with coordinates relative to world space.
@@ -95,6 +111,8 @@ private:
 	// Cache View/Proj matrices.
 	DirectX::XMFLOAT4X4 mView = MathHelper::Identity4x4();
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
+
+	Rect rect;
 };
 
 #endif // CAMERA_H

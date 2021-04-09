@@ -62,6 +62,7 @@ enum class RenderLayer : int
 	Count
 };
 
+
 struct Elements
 {
 	Elements()
@@ -135,10 +136,15 @@ private:
     void BuildRenderItems();
     void DrawRenderItems(ID3D12GraphicsCommandList* cmdList, const std::vector<RenderItem*>& ritems);
 
+	
+
 	std::array<const CD3DX12_STATIC_SAMPLER_DESC, 6> GetStaticSamplers();
 
     float GetHillsHeight(float x, float z)const;
     XMFLOAT3 GetHillsNormal(float x, float z)const;
+
+	bool checkCollisionWithCamera();
+	bool checkAaBbCollision(Rect a, Rect b);
 
 private:
 
@@ -170,6 +176,8 @@ private:
 	//tileMap
 	int const numberOfTiles = 27;
 	Elements tileMap[27][27];
+
+	std::vector<Rect*> collisionList;
 
 	// Render items divided by PSO.
 	std::vector<RenderItem*> mRitemLayer[(int)RenderLayer::Count];
@@ -242,7 +250,6 @@ bool TreeBillboardsApp::Initialize()
 	BuildShapeGeometry();
     BuildLandGeometry();
     BuildWavesGeometry();
-	//BuildBoxGeometry();
 	BuildTreeSpritesGeometry();
 
 	BuildMaterials();
@@ -424,17 +431,43 @@ void TreeBillboardsApp::OnKeyboardInput(const GameTimer& gt)
 	const float dt = gt.DeltaTime();
 
 	//GetAsyncKeyState returns a short (2 bytes)
-	if (GetAsyncKeyState('W') & 0x8000) //most significant bit (MSB) is 1 when key is pressed (1000 000 000 000)
+	if (GetAsyncKeyState('W') & 0x8000)
+	{
+		//most significant bit (MSB) is 1 when key is pressed (1000 000 000 000)
 		mCamera.Walk(10.0f * dt);
-
+		if (checkCollisionWithCamera())
+		{
+			mCamera.Walk(-10.0f * dt);
+		}
+	}
 	if (GetAsyncKeyState('S') & 0x8000)
+	{
 		mCamera.Walk(-10.0f * dt);
+		if (checkCollisionWithCamera())
+		{
+			mCamera.Walk(10.0f * dt);
+		}
+
+	}
 
 	if (GetAsyncKeyState('A') & 0x8000)
+	{
 		mCamera.Strafe(-10.0f * dt);
+		if (checkCollisionWithCamera())
+		{
+			mCamera.Strafe(10.0f * dt);
+		}
+	}
+		
 
 	if (GetAsyncKeyState('D') & 0x8000)
+	{
 		mCamera.Strafe(10.0f * dt);
+		if (checkCollisionWithCamera())
+		{
+			mCamera.Strafe(-10.0f * dt);
+		}
+	}
 
 	mCamera.UpdateViewMatrix();
 }
@@ -1289,6 +1322,7 @@ void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, f
 
 void TreeBillboardsApp::Turret(float posX, float posZ)
 {
+	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//BottomCylinder
 	CreateShape("cylinder", 1.0f, 3.0f, 1.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 
@@ -1305,6 +1339,7 @@ void TreeBillboardsApp::Turret(float posX, float posZ)
 void TreeBillboardsApp::SuperTurret(float posX, float posZ)
 {
 	float scale = 2;
+	collisionList.push_back(new Rect(posX, posZ, 4.0f, 4.0f));
 	//BottomCylinder
 	CreateShape("cylinder", 1.0f * scale, 3.0f * scale, 1.0f * scale, posX, 1.0f * scale, posZ, 0.0f, "concrete");
 
@@ -1649,3 +1684,28 @@ XMFLOAT3 TreeBillboardsApp::GetHillsNormal(float x, float z)const
 
     return n;
 }
+
+bool TreeBillboardsApp::checkCollisionWithCamera()
+{
+	for (auto object : collisionList)
+	{
+		if (checkAaBbCollision(mCamera.getRect(), *object))
+		{
+			return true;
+		}
+	}
+	return false;
+}
+
+bool TreeBillboardsApp::checkAaBbCollision(Rect a, Rect b)
+{
+	if (a.posX < b.posX + b.wx &&
+		a.posX + a.wx > b.posX &&
+		a.posY < b.posY + b.hz &&
+		a.posY + a.hz > b.posY)
+	{
+		return true;
+	}
+	return false;
+}
+

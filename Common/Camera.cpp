@@ -300,4 +300,9 @@ void Camera::UpdateViewMatrix()
 	}
 }
 
+Rect Camera::getRect()
+{
+	return Rect(mPosition.x, mPosition.z, 0.1f,0.1f);
+}
+
 
