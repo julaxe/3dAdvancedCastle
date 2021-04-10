@@ -131,6 +131,7 @@ private:
 	void WallVertical(float posX, float posZ);
 	void DoorRight(float posX, float posZ);
 	void DoorLeft(float posX, float posZ);
+	void MazeWall(float posX, float posZ);
 
     void BuildMaterials();
     void BuildRenderItems();
@@ -145,6 +146,7 @@ private:
 
 	bool checkCollisionWithCamera();
 	bool checkAaBbCollision(Rect a, Rect b);
+	void addCollisionRect(float posX, float posY, float width, float height);
 
 private:
 
@@ -189,6 +191,8 @@ private:
 	Camera mCamera;
 
     POINT mLastMousePos;
+
+	float mglobalScale = 2.0f;
 };
 
 int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE prevInstance,
@@ -239,7 +243,7 @@ bool TreeBillboardsApp::Initialize()
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
 
-    mWaves = std::make_unique<Waves>(255, 255, 1.0f, 0.03f, 4.0f, 0.2f);
+    mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
  
 	CreateTileMap();
 	LoadTextures();
@@ -1314,9 +1318,8 @@ void TreeBillboardsApp::BuildFrameResources()
 void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, float sZ, float pX, float pY, float pZ, float angle, std::string matereal)
 {
 	auto temp = std::make_unique<RenderItem>();
-	float globalScale = 2.0f;
 	//float globalYOffset = 10.f;
-	XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX * globalScale, sY* globalScale, sZ* globalScale) * XMMatrixTranslation(pX* globalScale, pY* globalScale, pZ* globalScale) * XMMatrixRotationY(XMConvertToRadians(angle)));
+	XMStoreFloat4x4(&temp->World, XMMatrixScaling(sX * mglobalScale, sY* mglobalScale, sZ* mglobalScale) * XMMatrixTranslation(pX* mglobalScale, pY* mglobalScale, pZ* mglobalScale) * XMMatrixRotationY(XMConvertToRadians(angle)));
 	temp->ObjCBIndex = objCBIndex++;
 	temp->Mat = mMaterials[matereal].get();
 	std::string s = shapeType;
@@ -1331,7 +1334,7 @@ void TreeBillboardsApp::CreateShape(const char* shapeType, float sX, float sY, f
 
 void TreeBillboardsApp::Turret(float posX, float posZ)
 {
-	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
+	addCollisionRect(posX, posZ, 1.0f, 1.0f);
 	//BottomCylinder
 	CreateShape("cylinder", 1.0f, 3.0f, 1.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 
@@ -1348,7 +1351,8 @@ void TreeBillboardsApp::Turret(float posX, float posZ)
 void TreeBillboardsApp::SuperTurret(float posX, float posZ)
 {
 	float scale = 2;
-	collisionList.push_back(new Rect(posX, posZ, 4.0f, 4.0f));
+
+	addCollisionRect(posX, posZ, 1.0f * scale, 1.0f * scale);
 	//BottomCylinder
 	CreateShape("cylinder", 1.0f * scale, 3.0f * scale, 1.0f * scale, posX, 1.0f * scale, posZ, 0.0f, "concrete");
 
@@ -1364,7 +1368,7 @@ void TreeBillboardsApp::SuperTurret(float posX, float posZ)
 
 void TreeBillboardsApp::WallHorizontal(float posX, float posZ)
 {
-	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
+	addCollisionRect(posX, posZ, 2.0f, 0.5f);
 	//Wall
 	CreateShape("box", 2.0f, 2.0f, 0.5f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
@@ -1373,7 +1377,7 @@ void TreeBillboardsApp::WallHorizontal(float posX, float posZ)
 
 void TreeBillboardsApp::WallVertical(float posX, float posZ)
 {
-	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
+	addCollisionRect(posX, posZ, 0.5f, 2.0f);
 	//Wall
 	CreateShape("box", 0.5f, 2.0f, 2.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
@@ -1381,7 +1385,6 @@ void TreeBillboardsApp::WallVertical(float posX, float posZ)
 }
 void TreeBillboardsApp::DoorRight(float posX, float posZ)
 {
-	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Door
 	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
@@ -1389,11 +1392,15 @@ void TreeBillboardsApp::DoorRight(float posX, float posZ)
 }
 void TreeBillboardsApp::DoorLeft(float posX, float posZ)
 {
-	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Door
 	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
 	CreateShape("Torus", 0.1f, 0.1f, 0.1f, posX + 0.5, 1.5f, posZ - 0.2, 0.0f, "gold");
+}
+void TreeBillboardsApp::MazeWall(float posX, float posZ)
+{
+	addCollisionRect(posX, posZ, 1.0f, 1.0f);
+	CreateShape("box", 1.0f, 4.0f, 1.0f, posX, 1.25f, posZ, 0.0f, "wood");
 }
 void TreeBillboardsApp::BuildMaterials()
 {
@@ -1519,7 +1526,7 @@ void TreeBillboardsApp::BuildRenderItems()
 				DoorRight(tileMap[x][y].posX, tileMap[x][y].posY);
 				break;
 			case 'M':
-				CreateShape("box", 1.0f, 4.0f, 1.0f, tileMap[x][y].posX, 1.25f, tileMap[x][y].posY, 0.0f, "wood");
+				MazeWall(tileMap[x][y].posX, tileMap[x][y].posY);
 				break;
 			default:
 				break;
@@ -1531,7 +1538,7 @@ void TreeBillboardsApp::BuildRenderItems()
 	
     auto wavesRitem = std::make_unique<RenderItem>();
     wavesRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(100.0f, 100.0f, 1.0f) * XMMatrixTranslation(-100.0f, -100.0f, -100.0f));
+	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(500.0f, 500.0f, 1.0f) * XMMatrixTranslation(-100.0f, -200.0f, -100.0f));
 	wavesRitem->ObjCBIndex = objCBIndex++;
 	wavesRitem->Mat = mMaterials["water"].get();
 	wavesRitem->Geo = mGeometries["waterGeo"].get();
@@ -1543,34 +1550,6 @@ void TreeBillboardsApp::BuildRenderItems()
     mWavesRitem = wavesRitem.get();
 
 	mRitemLayer[(int)RenderLayer::Transparent].push_back(wavesRitem.get());
-
-    /*auto gridRitem = std::make_unique<RenderItem>();
-    gridRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&gridRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f));
-	gridRitem->ObjCBIndex = 1;
-	gridRitem->Mat = mMaterials["grass"].get();
-	gridRitem->Geo = mGeometries["landGeo"].get();
-	gridRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-    gridRitem->IndexCount = gridRitem->Geo->DrawArgs["grid"].IndexCount;
-    gridRitem->StartIndexLocation = gridRitem->Geo->DrawArgs["grid"].StartIndexLocation;
-    gridRitem->BaseVertexLocation = gridRitem->Geo->DrawArgs["grid"].BaseVertexLocation;
-
-	mRitemLayer[(int)RenderLayer::Opaque].push_back(gridRitem.get());*/
-
-	//SuperTurret(0.0f, 0.0f);
-	//CreateShape("cylinder", 1.0f, 1.0f, 1.0f, 0.0f, 10.0f, 0.0f);
-
-	/*auto boxRitem = std::make_unique<RenderItem>();
-	XMStoreFloat4x4(&boxRitem->World, XMMatrixTranslation(3.0f, 2.0f, -9.0f));
-	boxRitem->ObjCBIndex = objCBIndex++;
-	boxRitem->Mat = mMaterials["wirefence"].get();
-	boxRitem->Geo = mGeometries["boxGeo"].get();
-	boxRitem->PrimitiveType = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
-	boxRitem->IndexCount = boxRitem->Geo->DrawArgs["box"].IndexCount;
-	boxRitem->StartIndexLocation = boxRitem->Geo->DrawArgs["box"].StartIndexLocation;
-	boxRitem->BaseVertexLocation = boxRitem->Geo->DrawArgs["box"].BaseVertexLocation;
-
-	mRitemLayer[(int)RenderLayer::AlphaTested].push_back(boxRitem.get());*/
 
 	auto treeSpritesRitem = std::make_unique<RenderItem>();
 	treeSpritesRitem->World = MathHelper::Identity4x4();
@@ -1587,8 +1566,6 @@ void TreeBillboardsApp::BuildRenderItems()
 
 
     mAllRitems.push_back(std::move(wavesRitem));
-    //mAllRitems.push_back(std::move(gridRitem));
-	//mAllRitems.push_back(std::move(boxRitem));
 	mAllRitems.push_back(std::move(treeSpritesRitem));
 }
 
@@ -1702,14 +1679,21 @@ XMFLOAT3 TreeBillboardsApp::GetHillsNormal(float x, float z)const
 
 bool TreeBillboardsApp::checkCollisionWithCamera()
 {
-	for (auto object : collisionList)
+	if (!mCamera.getDebugMode())
 	{
-		if (checkAaBbCollision(mCamera.getRect(), *object))
+		for (auto object : collisionList)
 		{
-			return true;
+			if (checkAaBbCollision(mCamera.getRect(), *object))
+			{
+				return true;
+			}
 		}
+		return false;
 	}
-	return false;
+	else
+	{
+		return false;
+	}
 }
 
 bool TreeBillboardsApp::checkAaBbCollision(Rect a, Rect b)
@@ -1722,5 +1706,10 @@ bool TreeBillboardsApp::checkAaBbCollision(Rect a, Rect b)
 		return true;
 	}
 	return false;
+}
+
+void TreeBillboardsApp::addCollisionRect(float posX, float posZ, float width, float height)
+{
+	collisionList.push_back(new Rect(posX * mglobalScale, posZ * mglobalScale, width * mglobalScale, height * mglobalScale));
 }
 
