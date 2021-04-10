@@ -174,8 +174,8 @@ private:
 	std::vector<std::unique_ptr<RenderItem>> mAllRitems;
 
 	//tileMap
-	int const numberOfTiles = 27;
-	Elements tileMap[27][27];
+	int const numberOfTiles = 81;
+	Elements tileMap[81][81];
 
 	std::vector<Rect*> collisionList;
 
@@ -270,7 +270,7 @@ bool TreeBillboardsApp::Initialize()
  
 void TreeBillboardsApp::CreateTileMap()
 {
-	std::fstream fin("tileMap.txt", std::fstream::in);
+	std::fstream fin("Maze.txt", std::fstream::in);
 	int x = 0;
 	int y = 0;
 	float posX = (float)numberOfTiles * -0.5f;
@@ -1479,7 +1479,7 @@ void TreeBillboardsApp::BuildRenderItems()
 	//ground
 	CreateShape("ground", 55.0f, 1.0f, 44.0f, 0.0f, -0.5f, 13.0f, 0.0, s);
 	//ground2
-	CreateShape("ground", 30.0f, 1.0f, 30.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
+	CreateShape("ground", 110.0f, 1.0f, 110.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
 
 	//Ramp
 	CreateShape("ramp", 5.0f, 1.0f, 5.0f, -11.5f, -0.5f, 0.5f, -90.0f, s);
@@ -1505,7 +1505,9 @@ void TreeBillboardsApp::BuildRenderItems()
 			case 'R':
 				DoorRight(tileMap[x][y].posX, tileMap[x][y].posY);
 				break;
-
+			case 'M':
+				CreateShape("box", 1.0f, 4.0f, 1.0f, tileMap[x][y].posX, 1.25f, tileMap[x][y].posY, 0.0f, "wood");
+				break;
 			default:
 				break;
 			}
