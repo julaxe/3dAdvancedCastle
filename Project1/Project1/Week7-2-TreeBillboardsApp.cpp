@@ -243,7 +243,7 @@ bool TreeBillboardsApp::Initialize()
 
 	mCamera.SetPosition(0.0f, 2.0f, -15.0f);
 
-    mWaves = std::make_unique<Waves>(128, 128, 1.0f, 0.03f, 4.0f, 0.2f);
+    mWaves = std::make_unique<Waves>(128, 128, 2.0f, 0.03f, 4.0f, 0.2f);
  
 	CreateTileMap();
 	LoadTextures();
@@ -586,6 +586,8 @@ void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
 
 	//ambient light
 	mMainPassCB.AmbientLight = { 0.25f, 0.25f, 0.35f, 1.0f };
+
+	//Direction light
 	mMainPassCB.Lights[0].Direction = { 0.57735f, -0.57735f, 0.57735f };
 	mMainPassCB.Lights[0].Strength = { 0.15f, 0.15f, 0.50f };
 	mMainPassCB.Lights[1].Direction = { -0.57735f, -0.57735f, 0.57735f };
@@ -597,6 +599,8 @@ void TreeBillboardsApp::UpdateMainPassCB(const GameTimer& gt)
 	//point light
 	mMainPassCB.Lights[3].Position = { -0.0f, 0.707f, -0.707f };
 	mMainPassCB.Lights[3].Strength = { 10.15f, 10.15f, 0.15f };
+
+	//spotlight
 
 
 
@@ -617,7 +621,7 @@ void TreeBillboardsApp::UpdateWaves(const GameTimer& gt)
 
 		float r = MathHelper::RandF(0.2f, 0.5f);
 
-		mWaves->Disturb(i, j, r);
+		mWaves->Disturb(i, j, 0.1f);
 	}
 
 	// Update the wave simulation.
@@ -1152,26 +1156,54 @@ void TreeBillboardsApp::BuildTreeSpritesGeometry()
 		XMFLOAT2 Size;
 	};
 
-	static const int treeCount = 32;
+	static const int treeCount = 128;
 	std::array<TreeSpriteVertex, treeCount> vertices;
 	for(UINT i = 0; i < treeCount; ++i)
 	{
-		float x = MathHelper::RandF(-45.0f, 45.0f);
-		float z = MathHelper::RandF(-10.0f, 45.0f);
-		float y = 0.0f;
+		float x;
+		float z;
+		int side = MathHelper::Rand(0, 1);
+		if (side == 0)// side
+		{
+			int r = MathHelper::Rand(0, 1);
+			if (r == 0) // Right
+			{
+				x = 85.0f + MathHelper::RandF(0.0f, 5.0f);
+			}
+			else // left
+			{
+				x = -85.0f + MathHelper::RandF(-5.0f, 0.0f);
+			}
+			z = MathHelper::RandF(-90.0f, 90.0f);
+		}
+		else // top- down
+		{
+			int r = MathHelper::Rand(0, 1);
+			if (r == 0) // Right
+			{
+				z = 85.0f + MathHelper::RandF(0.0f, 5.0f);
+			}
+			else // left
+			{
+				z = -85.0f + MathHelper::RandF(-5.0f, 0.0f);
+			}
+			x = MathHelper::RandF(-90.0f, 90.0f);
+		}
+		float y = 2.5f;
 
 	
 
 		vertices[i].Size = XMFLOAT2(10.0f, 10.0f);
-		y = vertices[0].Size.x * 0.5f;
+		//y = vertices[0].Size.x * 0.5f;
 		vertices[i].Pos = XMFLOAT3(x, y, z);
 	}
 
-	std::array<std::uint16_t, 16> indices =
+	std::array<std::uint16_t, treeCount> indices;
+
+	for(int i = 0; i < treeCount; i++)
 	{
-		0, 1, 2, 3, 4, 5, 6, 7,
-		8, 9, 10, 11, 12, 13, 14, 15
-	};
+		indices[i] = i;
+	}
 
 	const UINT vbByteSize = (UINT)vertices.size() * sizeof(TreeSpriteVertex);
 	const UINT ibByteSize = (UINT)indices.size() * sizeof(std::uint16_t);
@@ -1499,7 +1531,7 @@ void TreeBillboardsApp::BuildRenderItems()
 	//ground
 	CreateShape("ground", 25.0f, 1.0f, 20.0f, -2.0f, -0.5f, 1.0f, 0.0, s);
 	//ground2
-	CreateShape("ground", 90.0f, 1.0f, 90.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
+	CreateShape("ground", 90.0f, 2.0f, 90.0f, 0.0f, -2.0f, 0.0f, 0.0, s);
 
 	//Ramp
 	CreateShape("ramp", 5.0f, 1.0f, 5.0f, -11.5f, -0.5f, 0.5f, -90.0f, s);
@@ -1527,6 +1559,15 @@ void TreeBillboardsApp::BuildRenderItems()
 				break;
 			case 'M':
 				MazeWall(tileMap[x][y].posX, tileMap[x][y].posY);
+				break;
+			case 'C':
+				mCamera.SetPosition((tileMap[x][y].posX+2.0f) * mglobalScale, 2.0f, tileMap[x][y].posY * mglobalScale);
+				mMainPassCB.Lights[4].Position = { (tileMap[x][y].posX + 2.0f)* mglobalScale, 0.707f, tileMap[x][y].posY* mglobalScale };
+				mMainPassCB.Lights[4].Strength = { 10.15f, 10.15f, 0.15f };
+				break;
+			case 'F':
+				mMainPassCB.Lights[5].Position = { (tileMap[x][y].posX + 2.0f) * mglobalScale, 0.707f, tileMap[x][y].posY * mglobalScale };
+				mMainPassCB.Lights[5].Strength = { 10.15f, 0.15f, 0.15f };
 				break;
 			default:
 				break;
