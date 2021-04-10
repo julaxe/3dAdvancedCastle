@@ -17,8 +17,8 @@ struct Rect
 	Rect() = default;
 	Rect(float x, float y, float wx, float hz)
 	{
-		posX = x - (wx * 0.5f);
-		posY = y + (hz * 0.5f);
+		posX = x - (wx*0.5f);
+		posY = y - (hz*0.5f);
 		this->wx = wx;
 		this->hz = hz;
 	}

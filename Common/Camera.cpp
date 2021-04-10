@@ -322,7 +322,7 @@ void Camera::UpdateViewMatrix()
 
 Rect Camera::getRect()
 {
-	return Rect(mPosition.x, mPosition.z, 0.1f,0.1f);
+	return Rect(mPosition.x, mPosition.z, 2.0f,2.0f);
 }
 
 void Camera::setDebugMode(bool debug)
