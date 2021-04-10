@@ -179,7 +179,15 @@ XMFLOAT4X4 Camera::GetProj4x4f()const
 void Camera::Strafe(float d)
 {
 	// mPosition += d*mRight
-	XMVECTOR s = XMVectorReplicate(d);
+	XMVECTOR s;
+	if (mDebugMode)
+	{
+		s = XMVectorReplicate(d * 10.0f);
+	}
+	else
+	{
+		s = XMVectorReplicate(d);
+	}
 	XMVECTOR r = XMLoadFloat3(&mRight);
 	XMVECTOR p = XMLoadFloat3(&mPosition);
 	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, r, p));
@@ -190,13 +198,21 @@ void Camera::Strafe(float d)
 void Camera::Walk(float d)
 {
 	// mPosition += d*mLook
-	XMVECTOR s = XMVectorReplicate(d);
-	XMFLOAT3 newVector;
-	newVector = {mLook.x, 0.0f, mLook.z};
-	
-	XMVECTOR l = XMLoadFloat3(&newVector);
 	XMVECTOR p = XMLoadFloat3(&mPosition);
-	XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
+	if (mDebugMode)
+	{
+		XMVECTOR s = XMVectorReplicate(d*10.0f);
+		XMVECTOR l = XMLoadFloat3(&mLook);
+		XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
+	}
+	else
+	{
+		XMVECTOR s = XMVectorReplicate(d);
+		XMFLOAT3 newVector;
+		newVector = { mLook.x, 0.0f, mLook.z };
+		XMVECTOR l = XMLoadFloat3(&newVector);
+		XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
+	}
 
 	mViewDirty = true;
 }
@@ -204,7 +220,6 @@ void Camera::Walk(float d)
 
 void Camera::Pedestal(float d)
 {
-	// mPosition += d*mUp
 	XMVECTOR s = XMVectorReplicate(d);
 	XMVECTOR u = XMLoadFloat3(&mUp);
 	XMVECTOR p = XMLoadFloat3(&mPosition);
@@ -303,6 +318,11 @@ void Camera::UpdateViewMatrix()
 Rect Camera::getRect()
 {
 	return Rect(mPosition.x, mPosition.z, 0.1f,0.1f);
+}
+
+void Camera::setDebugMode(bool debug)
+{
+	mDebugMode = debug;
 }
 
 

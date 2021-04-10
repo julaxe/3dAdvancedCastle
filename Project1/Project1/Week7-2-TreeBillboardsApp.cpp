@@ -469,6 +469,11 @@ void TreeBillboardsApp::OnKeyboardInput(const GameTimer& gt)
 		}
 	}
 
+	if (GetAsyncKeyState('H') & 0x8000)
+	{
+		mCamera.setDebugMode(!mCamera.getDebugMode());
+	}
+
 	mCamera.UpdateViewMatrix();
 }
  
@@ -1355,6 +1360,7 @@ void TreeBillboardsApp::SuperTurret(float posX, float posZ)
 
 void TreeBillboardsApp::WallHorizontal(float posX, float posZ)
 {
+	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Wall
 	CreateShape("box", 2.0f, 2.0f, 0.5f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
@@ -1363,6 +1369,7 @@ void TreeBillboardsApp::WallHorizontal(float posX, float posZ)
 
 void TreeBillboardsApp::WallVertical(float posX, float posZ)
 {
+	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Wall
 	CreateShape("box", 0.5f, 2.0f, 2.0f, posX, 1.0f, posZ, 0.0f, "concrete");
 	//Merlons
@@ -1370,6 +1377,7 @@ void TreeBillboardsApp::WallVertical(float posX, float posZ)
 }
 void TreeBillboardsApp::DoorRight(float posX, float posZ)
 {
+	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Door
 	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
@@ -1377,6 +1385,7 @@ void TreeBillboardsApp::DoorRight(float posX, float posZ)
 }
 void TreeBillboardsApp::DoorLeft(float posX, float posZ)
 {
+	collisionList.push_back(new Rect(posX, posZ, 1.0f, 1.0f));
 	//Door
 	CreateShape("door", 2.0f, 2.5f, 0.3f, posX, 1.25f, posZ, 0.0f, "wood");
 	//handle
