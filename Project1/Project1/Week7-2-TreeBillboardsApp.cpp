@@ -1490,9 +1490,9 @@ void TreeBillboardsApp::BuildRenderItems()
 
 	std::string s = "grass";
 	//ground
-	CreateShape("ground", 55.0f, 1.0f, 44.0f, 0.0f, -0.5f, 13.0f, 0.0, s);
+	CreateShape("ground", 25.0f, 1.0f, 20.0f, -2.0f, -0.5f, 1.0f, 0.0, s);
 	//ground2
-	CreateShape("ground", 110.0f, 1.0f, 110.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
+	CreateShape("ground", 90.0f, 1.0f, 90.0f, 0.0f, -1.5f, 0.0f, 0.0, s);
 
 	//Ramp
 	CreateShape("ramp", 5.0f, 1.0f, 5.0f, -11.5f, -0.5f, 0.5f, -90.0f, s);
@@ -1531,7 +1531,7 @@ void TreeBillboardsApp::BuildRenderItems()
 	
     auto wavesRitem = std::make_unique<RenderItem>();
     wavesRitem->World = MathHelper::Identity4x4();
-	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(5.0f, 5.0f, 1.0f) * XMMatrixTranslation(-100.0f, -100.0f, -100.0f));
+	XMStoreFloat4x4(&wavesRitem->TexTransform, XMMatrixScaling(500.0f, 500.0f, 1.0f) * XMMatrixTranslation(-100.0f, -200.0f, -100.0f));
 	wavesRitem->ObjCBIndex = objCBIndex++;
 	wavesRitem->Mat = mMaterials["water"].get();
 	wavesRitem->Geo = mGeometries["waterGeo"].get();
