@@ -17,8 +17,8 @@ struct Rect
 	Rect() = default;
 	Rect(float x, float y, float wx, float hz)
 	{
-		posX = x;
-		posY = y;
+		posX = x - (wx * 0.5f);
+		posY = y + (hz * 0.5f);
 		this->wx = wx;
 		this->hz = hz;
 	}
@@ -89,6 +89,8 @@ public:
 	void UpdateViewMatrix();
 
 	Rect getRect();
+	void setDebugMode(bool debug);
+	bool getDebugMode() { return mDebugMode; }
 
 private:
 
@@ -113,6 +115,8 @@ private:
 	DirectX::XMFLOAT4X4 mProj = MathHelper::Identity4x4();
 
 	Rect rect;
+	bool mDebugMode;
+	float mdefaultposY;
 };
 
 #endif // CAMERA_H
