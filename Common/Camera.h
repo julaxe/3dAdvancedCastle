@@ -116,6 +116,7 @@ private:
 
 	Rect rect;
 	bool mDebugMode;
+	float mdefaultposY;
 };
 
 #endif // CAMERA_H

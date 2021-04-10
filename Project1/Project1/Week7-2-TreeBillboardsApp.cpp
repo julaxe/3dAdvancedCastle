@@ -471,7 +471,11 @@ void TreeBillboardsApp::OnKeyboardInput(const GameTimer& gt)
 
 	if (GetAsyncKeyState('H') & 0x8000)
 	{
-		mCamera.setDebugMode(!mCamera.getDebugMode());
+		mCamera.setDebugMode(true);
+	}
+	if (GetAsyncKeyState('J') & 0x8000)
+	{
+		mCamera.setDebugMode(false);
 	}
 
 	mCamera.UpdateViewMatrix();

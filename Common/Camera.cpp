@@ -28,6 +28,7 @@ XMFLOAT3 Camera::GetPosition3f()const
 void Camera::SetPosition(float x, float y, float z)
 {
 	mPosition = XMFLOAT3(x, y, z);
+	mdefaultposY = y;
 	mViewDirty = true;
 }
 
@@ -198,19 +199,23 @@ void Camera::Strafe(float d)
 void Camera::Walk(float d)
 {
 	// mPosition += d*mLook
-	XMVECTOR p = XMLoadFloat3(&mPosition);
 	if (mDebugMode)
 	{
+		XMVECTOR p = XMLoadFloat3(&mPosition);
 		XMVECTOR s = XMVectorReplicate(d*10.0f);
 		XMVECTOR l = XMLoadFloat3(&mLook);
 		XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
 	}
 	else
 	{
+		XMVECTOR p = XMLoadFloat3(&mPosition);
+
 		XMVECTOR s = XMVectorReplicate(d);
+
 		XMFLOAT3 newVector;
 		newVector = { mLook.x, 0.0f, mLook.z };
 		XMVECTOR l = XMLoadFloat3(&newVector);
+
 		XMStoreFloat3(&mPosition, XMVectorMultiplyAdd(s, l, p));
 	}
 
@@ -323,6 +328,12 @@ Rect Camera::getRect()
 void Camera::setDebugMode(bool debug)
 {
 	mDebugMode = debug;
+	if (!mDebugMode)
+	{
+		float x = mPosition.x;
+		float z = mPosition.z;
+		SetPosition(x, mdefaultposY, z);
+	}
 }
 
 
